@@ -1316,7 +1316,7 @@ MonoBehaviour:
   m_InteractionManager: {fileID: 0}
   m_Colliders: []
   m_InteractionLayers:
-    m_Bits: 26
+    m_Bits: 10
   m_DistanceCalculationMode: 1
   m_SelectMode: 0
   m_FocusMode: 1
@@ -1587,7 +1587,6 @@ GameObject:
   - component: {fileID: 425989300}
   - component: {fileID: 425989302}
   - component: {fileID: 425989301}
-  - component: {fileID: 425989303}
   m_Layer: 0
   m_Name: ShadeSnapSocket
   m_TagString: Untagged
@@ -1624,7 +1623,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Interactors.XRSocketInteractor
   m_InteractionManager: {fileID: 630426561}
   m_InteractionLayers:
-    m_Bits: 8
+    m_Bits: 10
   m_Handedness: 0
   m_AttachTransform: {fileID: 425989300}
   m_KeepSelectedTargetValid: 1
@@ -1648,7 +1647,7 @@ MonoBehaviour:
   m_ShowInteractableHoverMeshes: 1
   m_InteractableHoverMeshMaterial: {fileID: 0}
   m_InteractableCantHoverMeshMaterial: {fileID: 0}
-  m_SocketActive: 0
+  m_SocketActive: 1
   m_InteractableHoverScale: 1
   m_RecycleDelayTime: 1
   m_HoverSocketSnapping: 1
@@ -1677,23 +1676,6 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.05
   m_Center: {x: 0, y: 0.23, z: 0}
---- !u!114 &425989303
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 425989299}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f125585a432642bc9d55c62590638b7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnableOnSocketAttach
-  socket: {fileID: 425989301}
-  requiredInteractable: {fileID: 0}
-  socketsToActivate: []
-  deactivateThisSocketAfterAttach: 1
-  revertOnDetach: 1
 --- !u!1 &454206505
 GameObject:
   m_ObjectHideFlags: 0
@@ -4015,7 +3997,7 @@ MonoBehaviour:
   m_Colliders:
   - {fileID: 1167970475}
   m_InteractionLayers:
-    m_Bits: 22
+    m_Bits: 4294967295
   m_DistanceCalculationMode: 1
   m_SelectMode: 0
   m_FocusMode: 1
@@ -4910,7 +4892,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2190828208922718286, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2449787133337329437, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_IsActive
@@ -4919,19 +4901,11 @@ PrefabInstance:
     - target: {fileID: 4778211696441940833, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_RayInteractor
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 580703902}
     - target: {fileID: 5663893676086941514, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_RayInteractor
       value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 5944131804917401860, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6501755809687671949, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 116548513}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -5512,7 +5486,6 @@ GameObject:
   - component: {fileID: 1612073714}
   - component: {fileID: 1612073716}
   - component: {fileID: 1612073715}
-  - component: {fileID: 1612073717}
   m_Layer: 0
   m_Name: Socket Interactor
   m_TagString: Untagged
@@ -5549,7 +5522,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Interactors.XRSocketInteractor
   m_InteractionManager: {fileID: 630426561}
   m_InteractionLayers:
-    m_Bits: 16
+    m_Bits: 18
   m_Handedness: 0
   m_AttachTransform: {fileID: 2022836584}
   m_KeepSelectedTargetValid: 1
@@ -5573,10 +5546,10 @@ MonoBehaviour:
   m_ShowInteractableHoverMeshes: 1
   m_InteractableHoverMeshMaterial: {fileID: 7390553463975553142, guid: 7ab6f3b0fd1a6ba41b2a47766c16613f, type: 3}
   m_InteractableCantHoverMeshMaterial: {fileID: 0}
-  m_SocketActive: 0
+  m_SocketActive: 1
   m_InteractableHoverScale: 1
   m_RecycleDelayTime: 1
-  m_HoverSocketSnapping: 1
+  m_HoverSocketSnapping: 0
   m_SocketSnappingRadius: 0.1
   m_SocketScaleMode: 0
   m_FixedScale: {x: 1, y: 1, z: 1}
@@ -5602,24 +5575,6 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 1
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &1612073717
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1612073713}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f125585a432642bc9d55c62590638b7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnableOnSocketAttach
-  socket: {fileID: 1612073715}
-  requiredInteractable: {fileID: 288019679}
-  socketsToActivate:
-  - {fileID: 425989301}
-  deactivateThisSocketAfterAttach: 0
-  revertOnDetach: 1
 --- !u!1 &1618434416
 GameObject:
   m_ObjectHideFlags: 0
@@ -6301,7 +6256,6 @@ GameObject:
   - component: {fileID: 1776949813}
   - component: {fileID: 1776949814}
   - component: {fileID: 1776949815}
-  - component: {fileID: 1776949816}
   m_Layer: 0
   m_Name: StemSnapSocket
   m_TagString: Untagged
@@ -6338,7 +6292,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Interactors.XRSocketInteractor
   m_InteractionManager: {fileID: 630426561}
   m_InteractionLayers:
-    m_Bits: 4
+    m_Bits: 4294967295
   m_Handedness: 0
   m_AttachTransform: {fileID: 1776949813}
   m_KeepSelectedTargetValid: 1
@@ -6391,24 +6345,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.2, y: 0.1, z: 0.3}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1776949816
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1776949812}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f125585a432642bc9d55c62590638b7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnableOnSocketAttach
-  socket: {fileID: 1776949814}
-  requiredInteractable: {fileID: 1167970473}
-  socketsToActivate:
-  - {fileID: 1612073715}
-  deactivateThisSocketAfterAttach: 0
-  revertOnDetach: 1
 --- !u!1 &1777128795
 GameObject:
   m_ObjectHideFlags: 0
@@ -7931,7 +7867,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.13543001, y: 0.54647, z: -1.075}
-  m_LocalScale: {x: 0.2, y: 0.015, z: 0.2}
+  m_LocalScale: {x: 0.2, y: 0.015, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1915909287}
