@@ -8,37 +8,38 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class EnableWholeLampGrab : MonoBehaviour
 {
     [Header("Sockets (drag in from scene)")]
-    public XRSocketInteractor stemSocket;   // Base/Stem socket
-    public XRSocketInteractor bulbSocket;   // Bulb socket
-    public XRSocketInteractor shadeSocket;  // Shade socket (optional)
+    public XRSocketInteractor stemSocket;
+    public XRSocketInteractor bulbSocket;
+    public XRSocketInteractor shadeSocket;
 
     [Tooltip("Require the shade to be snapped before enabling whole-lamp grab")]
     public bool requireShade = true;
 
     [Header("Assembly Timing")]
-    [Tooltip("Tiny delay after sockets are filled so XR finishes snapping.")]
     public float assembleDelay = 0.03f;
-    [Tooltip("Extra delay JUST for the shade so it’s perfectly centered before we lock.")]
     public float shadeExtraDelay = 0.05f;
 
     [Header("Bulb placement tweak")]
     [Tooltip("Move the bulb downward along the bulb socket's up-axis after assembly.")]
-    public float bulbDownOffset = 0.08f;   // <— adjust this until the bulb sits flush in the shade
+    public float bulbDownOffset = 0.08f;
+
+    [Header("Grab Stability")]
+    public bool makeTriggerWhileHeld = true;
+    public float liftOnGrab = 0.03f;
+    public float colliderInset = 0.004f;
 
     [Header("Parent Grab (assembled)")]
-    [Tooltip("Optional attach point for the final parent grab (if null we'll create one by the stem).")]
     public Transform combinedAttach;
 
     [Header("XR")]
     public XRInteractionManager xrManager;
 
     [Header("Light & Messages")]
-    [Tooltip("Socket to watch for shade attach/detach (defaults to shadeSocket)")]
     public XRSocketInteractor shadeSocketForLight;
-    public Light pointLight;          // The bulb's Light
-    public GameObject bulbVisual;     // Bulb mesh GameObject (optional)
-    public GameObject firstMessage;   // TV text #1
-    public GameObject secondMessage;  // TV text #2
+    public Light pointLight;
+    public GameObject bulbVisual;
+    public GameObject firstMessage;
+    public GameObject secondMessage;
     public float lightOnDelay = 0.2f;
 
     // ---- internals ----
@@ -47,13 +48,13 @@ public class EnableWholeLampGrab : MonoBehaviour
     XRGrabInteractable parentGrab;
     Rigidbody parentRB;
     BoxCollider parentBox;
+    bool originalIsTrigger;
 
     void Awake()
     {
         if (!xrManager) xrManager = FindFirstObjectByType<XRInteractionManager>();
         if (!shadeSocketForLight) shadeSocketForLight = shadeSocket;
 
-        // init light/UI off
         if (pointLight) pointLight.enabled = false;
         if (firstMessage) firstMessage.SetActive(false);
         if (secondMessage) secondMessage.SetActive(false);
@@ -72,12 +73,17 @@ public class EnableWholeLampGrab : MonoBehaviour
             shadeSocketForLight.selectEntered.RemoveListener(OnShadeEntered);
             shadeSocketForLight.selectExited.RemoveListener(OnShadeExited);
         }
+
+        if (parentGrab)
+        {
+            parentGrab.selectEntered.RemoveListener(OnParentGrabbed);
+            parentGrab.selectExited.RemoveListener(OnParentReleased);
+        }
     }
 
     void Update()
     {
         if (enabledOnce) return;
-
         if (!IsFilled(stemSocket) || !IsFilled(bulbSocket)) return;
         if (requireShade && !IsFilled(shadeSocket)) return;
 
@@ -86,20 +92,17 @@ public class EnableWholeLampGrab : MonoBehaviour
     }
 
     static bool IsFilled(XRSocketInteractor socket)
-    {
-        return socket && socket.hasSelection && socket.firstInteractableSelected != null;
-    }
+        => socket && socket.hasSelection && socket.firstInteractableSelected != null;
 
     static Transform GetSelectedTransform(XRSocketInteractor socket)
     {
         if (!socket || socket.firstInteractableSelected == null) return null;
-        var comp = socket.firstInteractableSelected as Component; // interface -> Component
+        var comp = socket.firstInteractableSelected as Component;
         return comp ? comp.transform : null;
     }
 
     IEnumerator AssembleAndEnableGrab()
     {
-        // --- cache BEFORE we exit from sockets ---
         Transform stemT   = GetSelectedTransform(stemSocket);
         Transform bulbT   = GetSelectedTransform(bulbSocket);
         Transform shadeT  = (requireShade || shadeSocket) ? GetSelectedTransform(shadeSocket) : null;
@@ -107,55 +110,41 @@ public class EnableWholeLampGrab : MonoBehaviour
         Transform shadeTarget = shadeSocket ? shadeSocket.attachTransform : null;
         Transform bulbTarget  = bulbSocket ? bulbSocket.attachTransform  : null;
 
-        // small settle so XR completes its own snap
         if (assembleDelay > 0f) yield return new WaitForSeconds(assembleDelay);
 
-        // cleanly release from sockets
         DeselectAndDisable(stemSocket);
         DeselectAndDisable(bulbSocket);
         if (shadeSocket) DeselectAndDisable(shadeSocket);
 
-        yield return null; // let select-exit finish
+        yield return null;
 
-        // reparent and ensure visuals on
         ReparentAndShow(stemT);
         ReparentAndShow(bulbT);
         ReparentAndShow(shadeT);
 
-        // Only align the shade (prevents base tilt). Do it after a tiny extra settle.
         if (shadeT && shadeTarget && shadeExtraDelay > 0f)
             yield return new WaitForSeconds(shadeExtraDelay);
         if (shadeT && shadeTarget)
             shadeT.SetPositionAndRotation(shadeTarget.position, shadeTarget.rotation);
 
-        // NUDGE BULB DOWN a little so it sits under the shade nicely.
         if (bulbT && bulbTarget && bulbDownOffset > 0f)
-        {
-            // Keep current rotation; just move along the socket’s -up:
-            Vector3 pos = bulbTarget.position - bulbTarget.up * bulbDownOffset;
-            bulbT.position = pos;
-        }
+            bulbT.position = bulbTarget.position - bulbTarget.up * bulbDownOffset;
 
-        // remove per-child XR & physics
         StripXRFromChildren();
-
-        // single collider on parent from renderers
         EnsureParentColliderFromRenderers();
 
-        // parent rigidbody
         parentRB = GetComponent<Rigidbody>();
         if (!parentRB) parentRB = gameObject.AddComponent<Rigidbody>();
         parentRB.useGravity = false;
-        parentRB.isKinematic = true; // set false next fixed step
-        parentRB.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        parentRB.isKinematic = true; // flip off next fixed step
+        parentRB.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         parentRB.interpolation = RigidbodyInterpolation.Interpolate;
 
-        // parent grab
         parentGrab = GetComponent<XRGrabInteractable>();
         if (!parentGrab) parentGrab = gameObject.AddComponent<XRGrabInteractable>();
         parentGrab.interactionManager = xrManager;
         parentGrab.movementType = XRGrabInteractable.MovementType.VelocityTracking;
-        parentGrab.throwOnDetach = false;
+        parentGrab.throwOnDetach = false;                // <- hard-disable throws (prevents the warning)
         parentGrab.trackPosition = true;
         parentGrab.trackRotation = true;
 
@@ -165,11 +154,16 @@ public class EnableWholeLampGrab : MonoBehaviour
         if (!combinedAttach) combinedAttach = CreateAttachPointNear(stemT);
         parentGrab.attachTransform = combinedAttach;
 
+        // subscribe (idempotent)
+        parentGrab.selectEntered.RemoveListener(OnParentGrabbed);
+        parentGrab.selectExited.RemoveListener(OnParentReleased);
+        parentGrab.selectEntered.AddListener(OnParentGrabbed);
+        parentGrab.selectExited.AddListener(OnParentReleased);
+
         yield return new WaitForFixedUpdate();
-        parentRB.isKinematic = false;
+        parentRB.isKinematic = false;  // ensure non-kinematic for VelocityTracking
         parentRB.useGravity  = true;
 
-        // Light/UI
         assembled = true;
         if (bulbVisual) bulbVisual.SetActive(true);
         if (firstMessage) firstMessage.SetActive(true);
@@ -234,6 +228,13 @@ public class EnableWholeLampGrab : MonoBehaviour
         Vector3 sizeLocal = transform.InverseTransformVector(world.size);
         sizeLocal = new Vector3(Mathf.Abs(sizeLocal.x), Mathf.Abs(sizeLocal.y), Mathf.Abs(sizeLocal.z));
 
+        // inset a hair to reduce surface scraping
+        sizeLocal = new Vector3(
+            Mathf.Max(0.001f, sizeLocal.x - colliderInset * 2f),
+            Mathf.Max(0.001f, sizeLocal.y - colliderInset * 2f),
+            Mathf.Max(0.001f, sizeLocal.z - colliderInset * 2f)
+        );
+
         parentBox.center = centerLocal;
         parentBox.size   = sizeLocal;
         parentBox.isTrigger = false;
@@ -246,7 +247,7 @@ public class EnableWholeLampGrab : MonoBehaviour
 
         if (stem)
         {
-            g.transform.position = stem.position + stem.up * 0.05f; // slight offset above stem
+            g.transform.position = stem.position + stem.up * 0.05f;
             g.transform.rotation = stem.rotation;
         }
         else if (parentBox)
@@ -261,6 +262,39 @@ public class EnableWholeLampGrab : MonoBehaviour
         }
 
         return g.transform;
+    }
+
+    // ---------- Stability while grabbing ----------
+    void OnParentGrabbed(SelectEnterEventArgs _)
+    {
+        if (!parentRB) return;
+
+        // Never be kinematic while held (prevents "cannot throw a kinematic RB" spam)
+        parentRB.isKinematic = false;
+        parentRB.useGravity = true;
+
+        if (parentBox)
+        {
+            originalIsTrigger = parentBox.isTrigger;
+            if (makeTriggerWhileHeld) parentBox.isTrigger = true;
+        }
+
+        if (liftOnGrab != 0f)
+            transform.position += Vector3.up * liftOnGrab;
+    }
+
+    void OnParentReleased(SelectExitEventArgs _)
+    {
+        if (parentBox) parentBox.isTrigger = originalIsTrigger;
+
+        // We don't throw; make sure we leave clean
+        if (parentRB)
+        {
+            parentRB.linearVelocity = Vector3.zero;
+            parentRB.angularVelocity = Vector3.zero;
+            parentRB.isKinematic = false;   // keep non-kinematic for normal physics after release
+            parentRB.useGravity = true;
+        }
     }
 
     // ---------- Light/message behavior ----------
