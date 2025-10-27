@@ -2,16 +2,26 @@
 Unity VR Project for CSC5036Z - Virtual Reality at University of Cape Town
 
 ## Description
-A VR experience built in Unity using the XR Interaction Toolkit.
+This project is an interactive **Virtual Reality assembly experience** built in **Unity 6.2 (6000.2.8f1)** using the **XR Interaction Toolkit**.  
+Players can grab, snap, and assemble parts of a lamp — base, stem, bulb, and shade — with realistic motion such as screwing and socket-based alignment.  
+The final assembled lamp can be grabbed and moved as a single object.
 
 ## Requirements
-- Unity 2022.x or later
-- XR Interaction Toolkit
+- **Unity 6.2 (6000.2.8f1)** or later
+- **XR Interaction Toolkit 3.2.1**
+- **XR Plugin Management**
 
-## How to Run
-1. Clone this repository.
-2. Open the project in Unity.
+## 🧪 Testing Instructions and how to run (for Lab Setup)
+1. Open the project in Unity.
+2. Navigate to the environment scene called "practise"
 3. Press Play.
 
+The main playable scene is located at:
+## From tutorials/plugins
+- XR Interaction Toolkit (Unity official package)
+- XR Device simulator (Unity sample for testing)
+- External models and assets include free lightbulb and book
+
 ## Authors
-- Your Name
+- Sander Johansen (JHNSAN010)
+- Oskar Voldsund (VLDOSK001)
