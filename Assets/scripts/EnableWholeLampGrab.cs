@@ -112,23 +112,30 @@ public class EnableWholeLampGrab : MonoBehaviour
 
         if (assembleDelay > 0f) yield return new WaitForSeconds(assembleDelay);
 
+
         DeselectAndDisable(stemSocket);
         DeselectAndDisable(bulbSocket);
         if (shadeSocket) DeselectAndDisable(shadeSocket);
 
         yield return null;
 
-        ReparentAndShow(stemT);
-        ReparentAndShow(bulbT);
-        ReparentAndShow(shadeT);
+        ReparentAndShow(stemT, transform);
+        ReparentAndShow(bulbT, stemT);
+        ReparentAndShow(shadeT, bulbT);
 
-        if (shadeT && shadeTarget && shadeExtraDelay > 0f)
-            yield return new WaitForSeconds(shadeExtraDelay);
-        if (shadeT && shadeTarget)
-            shadeT.SetPositionAndRotation(shadeTarget.position, shadeTarget.rotation);
+        if (bulbSocket && bulbSocket.attachTransform && bulbT)
+            bulbT.SetPositionAndRotation(bulbSocket.attachTransform.position, bulbSocket.attachTransform.rotation);
 
-        if (bulbT && bulbTarget && bulbDownOffset > 0f)
-            bulbT.position = bulbTarget.position - bulbTarget.up * bulbDownOffset;
+        if (shadeSocket && shadeSocket.attachTransform && shadeT)
+            shadeT.SetPositionAndRotation(shadeSocket.attachTransform.position, shadeSocket.attachTransform.rotation);
+
+        foreach (var grab in GetComponentsInChildren<XRGrabInteractable>(true))
+            if (grab && grab.gameObject != gameObject)
+                Destroy(grab);
+
+        foreach (var rb in GetComponentsInChildren<Rigidbody>(true))
+            if (rb && rb.gameObject != gameObject)
+                Destroy(rb);
 
         StripXRFromChildren();
         EnsureParentColliderFromRenderers();
@@ -183,10 +190,10 @@ public class EnableWholeLampGrab : MonoBehaviour
         socket.socketActive = false;
     }
 
-    void ReparentAndShow(Transform t)
+    void ReparentAndShow(Transform t, Transform newParent)
     {
         if (!t) return;
-        t.SetParent(transform, true);
+        t.SetParent(newParent, true);
         t.gameObject.SetActive(true);
         foreach (var r in t.GetComponentsInChildren<Renderer>(true))
             r.enabled = true;

@@ -48,7 +48,6 @@ public class SocketReleaseAfterSnap : MonoBehaviour
         // ✅ Keep socket in control
         socket.socketActive = false;
 
-        // ✅ Start screw motion
         grab.GetComponent<ScrewDownMotion>()?.BeginScrewing();
     }
 }
