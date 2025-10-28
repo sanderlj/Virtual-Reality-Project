@@ -7,14 +7,15 @@ Players can grab, snap, and assemble parts of a lamp — base, stem, bulb, and s
 The final assembled lamp can be grabbed and moved as a single object.
 
 ## Requirements
-- **Unity 6.2 (6000.2.8f1)** or later
+- **Unity 6.2 (6000.2.8f1) editor** 
 - **XR Interaction Toolkit 3.2.1**
 - **XR Plugin Management**
 
 ## 🧪 Testing Instructions and how to run (for Lab Setup)
 1. Open the project in Unity.
-2. Navigate to the environment scene called "practise"
-3. Press Play.
+2. Scene is located under project\Assets\OperationLamplight
+3. Make sure XR Device simulator is disabled/inactive if you play with SteamVR
+4. Press play and enjoy the game
 
 The main playable scene is located at:
 ## From tutorials/plugins
