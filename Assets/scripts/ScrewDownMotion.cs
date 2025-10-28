@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.Events;
 
 public class ScrewDownMotion : MonoBehaviour
 {
@@ -15,6 +16,9 @@ public class ScrewDownMotion : MonoBehaviour
 
     [Tooltip("Distance the bulb moves downward over totalTurns.")]
     public float totalDistance = 1.6f;
+
+    [HideInInspector] public bool IsFullyScrewed { get; private set; }
+    public UnityEvent onFullyScrewed = new UnityEvent();
 
     [Tooltip("Maximum hand distance before pausing screwing.")]
     public float maxHandDistance = 0.5f;
@@ -45,6 +49,7 @@ public class ScrewDownMotion : MonoBehaviour
 
     public void BeginScrewing()
     {
+        IsFullyScrewed = false;
         startPos = transform.position;
         accumulatedAngle = 0f;
         isScrewing = true;
@@ -101,6 +106,7 @@ public class ScrewDownMotion : MonoBehaviour
         if (!isScrewing)
             return;
 
+
         // 🔄 Compute RELATIVE rotation delta, not absolute world spin
         Quaternion currentRot = handInteractor.attachTransform.rotation;
         Quaternion delta = currentRot * Quaternion.Inverse(lastHandRotation);
@@ -133,6 +139,24 @@ public class ScrewDownMotion : MonoBehaviour
                 nextSocketToActivate.socketActive = true;
                 Debug.Log("➡️ Activated next socket: " + nextSocketToActivate.name);
             }
+        }
+        
+        if (t >= 1f && !IsFullyScrewed)
+        {
+            IsFullyScrewed = true;
+            isScrewing = false;
+            Debug.Log("✅ Bulb fully screwed in!");
+
+            onFullyScrewed.Invoke();          // <-- NEW
+
+            if (nextSocketToActivate != null)
+            {
+                nextSocketToActivate.socketActive = true;
+                Debug.Log("➡️ Activated next socket: " + nextSocketToActivate.name);
+            }
+
+            // Optional: disable this behaviour after completion
+            // enabled = false;
         }
     }
 }

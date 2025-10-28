@@ -1265,6 +1265,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: cab9df25d3401244a9987c0b13e196c8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 288019680}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: cab9df25d3401244a9987c0b13e196c8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 288019684}
     - targetCorrespondingSourceObject: {fileID: 665823583306453100, guid: cab9df25d3401244a9987c0b13e196c8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1290924242}
@@ -1478,10 +1481,33 @@ MonoBehaviour:
   handInteractor: {fileID: 947015045}
   totalTurns: 3
   totalDistance: 1.6
+  onFullyScrewed:
+    m_PersistentCalls:
+      m_Calls: []
   maxHandDistance: 0.5
   resumeAngleThreshold: 5
   virtualTurnSensitivity: 90
   nextSocketToActivate: {fileID: 425989301}
+--- !u!114 &288019684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 288019675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7d2eae12328940fa8a381745f99b46e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnableOnBulbScrewed
+  screw: {fileID: 288019680}
+  socketsToActivate:
+  - {fileID: 425989301}
+  deactivateBulbSocketWhenDone: 0
+  bulbSocket: {fileID: 0}
+  onActivated:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &360589749
 GameObject:
   m_ObjectHideFlags: 0
@@ -3530,24 +3556,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e0a83be2196e4049a1035e82ef23ed5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnableWholeLampGrab
-  stemSocket: {fileID: 1776949814}
-  bulbSocket: {fileID: 1612073715}
-  shadeSocket: {fileID: 425989301}
-  requireShade: 1
-  assembleDelay: 0.08
-  shadeExtraDelay: 0.05
-  bulbDownOffset: 0.08
-  makeTriggerWhileHeld: 1
-  liftOnGrab: 0.03
-  colliderInset: 0.004
-  combinedAttach: {fileID: 1774171269}
-  xrManager: {fileID: 630426561}
-  shadeSocketForLight: {fileID: 425989301}
-  pointLight: {fileID: 1292084452}
-  bulbVisual: {fileID: 288019675}
-  firstMessage: {fileID: 56153494}
-  secondMessage: {fileID: 1895655776}
-  lightOnDelay: 0.2
+  lampBase: {fileID: 2127968664}
+  lampStem: {fileID: 1167970472}
+  lampShade: {fileID: 675693342}
+  lightBulb: {fileID: 288019675}
+  lampGrab: {fileID: 1774171269}
+  shadeSocketOnBulb: {fileID: 425989301}
+  expectedShade: {fileID: 675693343}
+  pointLightToTurnOn: {fileID: 1292084452}
+  textsToReveal:
+  - {fileID: 56153494}
+  - {fileID: 1895655776}
+  finalMass: 1.2
+  angularDamping: 0.05
+  collisionMode: 3
+  interpolation: 1
+  parentUseGravity: 1
+  parentIsKinematic: 0
+  addAutoBoundsColliderIfMissing: 1
 --- !u!114 &947015045 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1883230248363655243, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
@@ -5736,6 +5762,10 @@ PrefabInstance:
     - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189, type: 3}
       propertyPath: m_Name
       value: XR Device Simulator
+      objectReference: {fileID: 0}
+    - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

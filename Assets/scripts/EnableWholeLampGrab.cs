@@ -2,328 +2,185 @@ using System.Collections;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-public class EnableWholeLampGrab : MonoBehaviour
+public class LampOneObjectFinalizer : MonoBehaviour
 {
-    [Header("Sockets (drag in from scene)")]
-    public XRSocketInteractor stemSocket;
-    public XRSocketInteractor bulbSocket;
-    public XRSocketInteractor shadeSocket;
+    [Header("Hierarchy")]
+    public GameObject lampBase;
+    public GameObject lampStem;
+    public GameObject lampShade;
+    public GameObject lightBulb; // kept active
 
-    [Tooltip("Require the shade to be snapped before enabling whole-lamp grab")]
-    public bool requireShade = true;
+    [Tooltip("Attach/handle transform for the final grabbable Lamp.")]
+    public Transform lampGrab;
 
-    [Header("Assembly Timing")]
-    public float assembleDelay = 0.03f;
-    public float shadeExtraDelay = 0.05f;
+    [Header("Assembly Detection")]
+    [Tooltip("Bulb socket that receives the shade. When it selects, we're done.")]
+    public XRSocketInteractor shadeSocketOnBulb;
+    [Tooltip("Optional: require this exact shade to be snapped.")]
+    public XRBaseInteractable expectedShade;
 
-    [Header("Bulb placement tweak")]
-    [Tooltip("Move the bulb downward along the bulb socket's up-axis after assembly.")]
-    public float bulbDownOffset = 0.08f;
+    [Header("Effects")]
+    public Light pointLightToTurnOn;
+    [Tooltip("All text objects that should be revealed when the lamp is assembled.")]
+    public GameObject[] textsToReveal;
 
-    [Header("Grab Stability")]
-    public bool makeTriggerWhileHeld = true;
-    public float liftOnGrab = 0.03f;
-    public float colliderInset = 0.004f;
+    [Header("Parent Body Settings (post-assembly)")]
+    public float finalMass = 1.2f;
+    public float angularDamping = 0.05f;
+    public CollisionDetectionMode collisionMode = CollisionDetectionMode.ContinuousDynamic;
+    public RigidbodyInterpolation interpolation = RigidbodyInterpolation.Interpolate;
+    public bool parentUseGravity = true;            // dynamic body w/ gravity
+    public bool parentIsKinematic = false;          // dynamic, not kinematic
 
-    [Header("Parent Grab (assembled)")]
-    public Transform combinedAttach;
+    [Header("Collider")]
+    [Tooltip("If NO collider exists anywhere on the Lamp hierarchy, add an auto-sized BoxCollider on the parent.")]
+    public bool addAutoBoundsColliderIfMissing = true;
 
-    [Header("XR")]
-    public XRInteractionManager xrManager;
+    bool finalized;
 
-    [Header("Light & Messages")]
-    public XRSocketInteractor shadeSocketForLight;
-    public Light pointLight;
-    public GameObject bulbVisual;
-    public GameObject firstMessage;
-    public GameObject secondMessage;
-    public float lightOnDelay = 0.2f;
-
-    // ---- internals ----
-    bool enabledOnce;
-    bool assembled;
-    XRGrabInteractable parentGrab;
-    Rigidbody parentRB;
-    BoxCollider parentBox;
-    bool originalIsTrigger;
-
-    void Awake()
+    void Reset()
     {
-        if (!xrManager) xrManager = FindFirstObjectByType<XRInteractionManager>();
-        if (!shadeSocketForLight) shadeSocketForLight = shadeSocket;
-
-        if (pointLight) pointLight.enabled = false;
-        if (firstMessage) firstMessage.SetActive(false);
-        if (secondMessage) secondMessage.SetActive(false);
-
-        if (shadeSocketForLight)
-        {
-            shadeSocketForLight.selectEntered.AddListener(OnShadeEntered);
-            shadeSocketForLight.selectExited.AddListener(OnShadeExited);
-        }
+        if (!shadeSocketOnBulb && lightBulb)
+            shadeSocketOnBulb = lightBulb.GetComponentInChildren<XRSocketInteractor>(true);
     }
 
-    void OnDestroy()
+    void OnEnable()
     {
-        if (shadeSocketForLight)
-        {
-            shadeSocketForLight.selectEntered.RemoveListener(OnShadeEntered);
-            shadeSocketForLight.selectExited.RemoveListener(OnShadeExited);
-        }
-
-        if (parentGrab)
-        {
-            parentGrab.selectEntered.RemoveListener(OnParentGrabbed);
-            parentGrab.selectExited.RemoveListener(OnParentReleased);
-        }
+        if (shadeSocketOnBulb)
+            shadeSocketOnBulb.selectEntered.AddListener(OnShadeSnapped);
     }
 
-    void Update()
+    void OnDisable()
     {
-        if (enabledOnce) return;
-        if (!IsFilled(stemSocket) || !IsFilled(bulbSocket)) return;
-        if (requireShade && !IsFilled(shadeSocket)) return;
-
-        StartCoroutine(AssembleAndEnableGrab());
-        enabledOnce = true;
+        if (shadeSocketOnBulb)
+            shadeSocketOnBulb.selectEntered.RemoveListener(OnShadeSnapped);
     }
 
-    static bool IsFilled(XRSocketInteractor socket)
-        => socket && socket.hasSelection && socket.firstInteractableSelected != null;
-
-    static Transform GetSelectedTransform(XRSocketInteractor socket)
+    void OnShadeSnapped(SelectEnterEventArgs args)
     {
-        if (!socket || socket.firstInteractableSelected == null) return null;
-        var comp = socket.firstInteractableSelected as Component;
-        return comp ? comp.transform : null;
+        if (finalized) return;
+        if (expectedShade && args.interactableObject != expectedShade) return;
+        FinalizeLamp();
     }
 
-    IEnumerator AssembleAndEnableGrab()
+    void FinalizeLamp()
     {
-        Transform stemT   = GetSelectedTransform(stemSocket);
-        Transform bulbT   = GetSelectedTransform(bulbSocket);
-        Transform shadeT  = (requireShade || shadeSocket) ? GetSelectedTransform(shadeSocket) : null;
+        if (finalized) return;
+        finalized = true;
 
-        Transform shadeTarget = shadeSocket ? shadeSocket.attachTransform : null;
-        Transform bulbTarget  = bulbSocket ? bulbSocket.attachTransform  : null;
+        // keep the bulb visible no matter what
+        ForceBulbActiveNowAndForAFrame();
 
-        if (assembleDelay > 0f) yield return new WaitForSeconds(assembleDelay);
+        // 1) Stop sockets from allowing further disassembly
+        DisableAll<XRSocketInteractor>(lampBase, lampStem, lightBulb, lampShade);
 
-
-        DeselectAndDisable(stemSocket);
-        DeselectAndDisable(bulbSocket);
-        if (shadeSocket) DeselectAndDisable(shadeSocket);
-
-        yield return null;
-
-        ReparentAndShow(stemT, transform);
-        ReparentAndShow(bulbT, stemT);
-        ReparentAndShow(shadeT, bulbT);
-
-        if (bulbSocket && bulbSocket.attachTransform && bulbT)
-            bulbT.SetPositionAndRotation(bulbSocket.attachTransform.position, bulbSocket.attachTransform.rotation);
-
-        if (shadeSocket && shadeSocket.attachTransform && shadeT)
-            shadeT.SetPositionAndRotation(shadeSocket.attachTransform.position, shadeSocket.attachTransform.rotation);
-
-        foreach (var grab in GetComponentsInChildren<XRGrabInteractable>(true))
-            if (grab && grab.gameObject != gameObject)
-                Destroy(grab);
-
-        foreach (var rb in GetComponentsInChildren<Rigidbody>(true))
-            if (rb && rb.gameObject != gameObject)
-                Destroy(rb);
-
-        StripXRFromChildren();
-        EnsureParentColliderFromRenderers();
-
-        parentRB = GetComponent<Rigidbody>();
-        if (!parentRB) parentRB = gameObject.AddComponent<Rigidbody>();
-        parentRB.useGravity = false;
-        parentRB.isKinematic = true; // flip off next fixed step
-        parentRB.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-        parentRB.interpolation = RigidbodyInterpolation.Interpolate;
-
-        parentGrab = GetComponent<XRGrabInteractable>();
-        if (!parentGrab) parentGrab = gameObject.AddComponent<XRGrabInteractable>();
-        parentGrab.interactionManager = xrManager;
-        parentGrab.movementType = XRGrabInteractable.MovementType.VelocityTracking;
-        parentGrab.throwOnDetach = false;                // <- hard-disable throws (prevents the warning)
-        parentGrab.trackPosition = true;
-        parentGrab.trackRotation = true;
-
-        parentGrab.colliders.Clear();
-        if (parentBox) parentGrab.colliders.Add(parentBox);
-
-        if (!combinedAttach) combinedAttach = CreateAttachPointNear(stemT);
-        parentGrab.attachTransform = combinedAttach;
-
-        // subscribe (idempotent)
-        parentGrab.selectEntered.RemoveListener(OnParentGrabbed);
-        parentGrab.selectExited.RemoveListener(OnParentReleased);
-        parentGrab.selectEntered.AddListener(OnParentGrabbed);
-        parentGrab.selectExited.AddListener(OnParentReleased);
-
-        yield return new WaitForFixedUpdate();
-        parentRB.isKinematic = false;  // ensure non-kinematic for VelocityTracking
-        parentRB.useGravity  = true;
-
-        assembled = true;
-        if (bulbVisual) bulbVisual.SetActive(true);
-        if (firstMessage) firstMessage.SetActive(true);
-        if (secondMessage) secondMessage.SetActive(true);
-        if (pointLight) Invoke(nameof(EnableLight), lightOnDelay);
-    }
-
-    void DeselectAndDisable(XRSocketInteractor socket)
-    {
-        if (!socket) return;
-        if (socket.hasSelection && socket.firstInteractableSelected != null)
-        {
-            var inter = socket.firstInteractableSelected;
-            (xrManager ? xrManager : FindFirstObjectByType<XRInteractionManager>())
-                .SelectExit(socket, inter);
-        }
-        socket.socketActive = false;
-    }
-
-    void ReparentAndShow(Transform t, Transform newParent)
-    {
-        if (!t) return;
-        t.SetParent(newParent, true);
-        t.gameObject.SetActive(true);
-        foreach (var r in t.GetComponentsInChildren<Renderer>(true))
-            r.enabled = true;
-    }
-
-    void StripXRFromChildren()
-    {
+        // 2) Remove XRGrabInteractable from all child parts (so only the parent is grabbable)
         foreach (var grab in GetComponentsInChildren<XRGrabInteractable>(true))
             if (grab && grab.gameObject != gameObject) Destroy(grab);
 
+        // 3) Remove child rigidbodies so their colliders become part of the parent compound
         foreach (var rb in GetComponentsInChildren<Rigidbody>(true))
             if (rb && rb.gameObject != gameObject) Destroy(rb);
 
-        foreach (var col in GetComponentsInChildren<Collider>(true))
-            if (col && col.gameObject != gameObject) Destroy(col);
+        // 4) Parent Rigidbody (single dynamic body that uses gravity)
+        var parentRB = GetComponent<Rigidbody>();
+        if (!parentRB) parentRB = gameObject.AddComponent<Rigidbody>();
+        parentRB.mass = finalMass;
+        parentRB.angularDamping = angularDamping;
+        parentRB.collisionDetectionMode = collisionMode;
+        parentRB.interpolation = interpolation;
+        parentRB.useGravity = parentUseGravity;     // true
+        parentRB.isKinematic = parentIsKinematic;   // false
+
+        // 5) Make sure we have at least one collider in the whole hierarchy
+        if (!HasAnyEnabledCollider(gameObject) && addAutoBoundsColliderIfMissing)
+            AddAutoBoxColliderFromChildren(gameObject);
+
+        // 6) Parent grab: dynamic/velocity tracking pairs best with non-kinematic RB
+        var grabParent = GetComponent<XRGrabInteractable>();
+        if (!grabParent) grabParent = gameObject.AddComponent<XRGrabInteractable>();
+#if UNITY_XR_INTERACTION_TOOLKIT
+        grabParent.movementType = XRGrabInteractable.MovementType.VelocityTracking;
+#endif
+        if (lampGrab) grabParent.attachTransform = lampGrab;
+        grabParent.selectMode = InteractableSelectMode.Single;
+
+        // 7) Effects: light + texts
+        if (pointLightToTurnOn) pointLightToTurnOn.enabled = true;
+        if (textsToReveal != null)
+        {
+            foreach (var go in textsToReveal)
+                if (go) go.SetActive(true);
+        }
     }
 
-    void EnsureParentColliderFromRenderers()
+    // ---------- helpers ----------
+
+    void DisableAll<T>(params GameObject[] roots) where T : Behaviour
     {
-        parentBox = GetComponent<BoxCollider>();
-        if (!parentBox) parentBox = gameObject.AddComponent<BoxCollider>();
-
-        var rends = GetComponentsInChildren<Renderer>(true)
-                    .Where(r => r.gameObject.activeInHierarchy)
-                    .ToArray();
-
-        if (rends.Length == 0)
+        foreach (var go in roots.Where(r => r))
         {
-            parentBox.center = Vector3.zero;
-            parentBox.size = Vector3.one * 0.1f;
-            parentBox.isTrigger = false;
-            return;
+            foreach (var c in go.GetComponentsInChildren<T>(true))
+                c.enabled = false;
         }
-
-        Bounds world = new Bounds(rends[0].bounds.center, rends[0].bounds.size);
-        for (int i = 1; i < rends.Length; i++) world.Encapsulate(rends[i].bounds);
-
-        Vector3 centerLocal = transform.InverseTransformPoint(world.center);
-        Vector3 sizeLocal = transform.InverseTransformVector(world.size);
-        sizeLocal = new Vector3(Mathf.Abs(sizeLocal.x), Mathf.Abs(sizeLocal.y), Mathf.Abs(sizeLocal.z));
-
-        // inset a hair to reduce surface scraping
-        sizeLocal = new Vector3(
-            Mathf.Max(0.001f, sizeLocal.x - colliderInset * 2f),
-            Mathf.Max(0.001f, sizeLocal.y - colliderInset * 2f),
-            Mathf.Max(0.001f, sizeLocal.z - colliderInset * 2f)
-        );
-
-        parentBox.center = centerLocal;
-        parentBox.size   = sizeLocal;
-        parentBox.isTrigger = false;
     }
 
-    Transform CreateAttachPointNear(Transform stem)
+    bool HasAnyEnabledCollider(GameObject root)
     {
-        var g = new GameObject("Attach_Lamp");
-        g.transform.SetParent(transform, false);
+        return root.GetComponentsInChildren<Collider>(true)
+                   .Any(c => c.enabled && c.gameObject.activeInHierarchy);
+    }
 
-        if (stem)
+    void AddAutoBoxColliderFromChildren(GameObject parent)
+    {
+        // compute world-space bounds from child colliders (prefer) or renderers
+        var cols = parent.GetComponentsInChildren<Collider>(true)
+                         .Where(c => c.gameObject != parent).ToArray();
+
+        Bounds b;
+        if (cols.Length > 0)
         {
-            g.transform.position = stem.position + stem.up * 0.05f;
-            g.transform.rotation = stem.rotation;
-        }
-        else if (parentBox)
-        {
-            g.transform.position = transform.TransformPoint(parentBox.center);
-            g.transform.rotation = Quaternion.identity;
+            b = new Bounds(cols[0].bounds.center, cols[0].bounds.size);
+            foreach (var c in cols) b.Encapsulate(c.bounds);
         }
         else
         {
-            g.transform.localPosition = Vector3.zero;
-            g.transform.localRotation = Quaternion.identity;
+            var rends = parent.GetComponentsInChildren<Renderer>(true)
+                              .Where(r => r.gameObject != parent).ToArray();
+            if (rends.Length == 0) return;
+            b = new Bounds(rends[0].bounds.center, rends[0].bounds.size);
+            foreach (var r in rends) b.Encapsulate(r.bounds);
         }
 
-        return g.transform;
+        var box = parent.AddComponent<BoxCollider>();
+        box.center = parent.transform.InverseTransformPoint(b.center);
+
+        // convert world size to local (accounting for lossy scale)
+        Vector3 ls = parent.transform.lossyScale;
+        Vector3 ws = b.size;
+        box.size = new Vector3(
+            ls.x != 0 ? ws.x / ls.x : ws.x,
+            ls.y != 0 ? ws.y / ls.y : ws.y,
+            ls.z != 0 ? ws.z / ls.z : ws.z
+        );
+        box.isTrigger = false;
     }
 
-    // ---------- Stability while grabbing ----------
-    void OnParentGrabbed(SelectEnterEventArgs _)
+    void ForceBulbActiveNowAndForAFrame()
     {
-        if (!parentRB) return;
-
-        // Never be kinematic while held (prevents "cannot throw a kinematic RB" spam)
-        parentRB.isKinematic = false;
-        parentRB.useGravity = true;
-
-        if (parentBox)
+        if (lightBulb)
         {
-            originalIsTrigger = parentBox.isTrigger;
-            if (makeTriggerWhileHeld) parentBox.isTrigger = true;
-        }
-
-        if (liftOnGrab != 0f)
-            transform.position += Vector3.up * liftOnGrab;
-    }
-
-    void OnParentReleased(SelectExitEventArgs _)
-    {
-        if (parentBox) parentBox.isTrigger = originalIsTrigger;
-
-        // We don't throw; make sure we leave clean
-        if (parentRB)
-        {
-            parentRB.linearVelocity = Vector3.zero;
-            parentRB.angularVelocity = Vector3.zero;
-            parentRB.isKinematic = false;   // keep non-kinematic for normal physics after release
-            parentRB.useGravity = true;
+            lightBulb.SetActive(true);
+            StartCoroutine(ReassertBulbActiveNextFrame());
         }
     }
 
-    // ---------- Light/message behavior ----------
-    void OnShadeEntered(SelectEnterEventArgs _)
+    IEnumerator ReassertBulbActiveNextFrame()
     {
-        if (bulbVisual) bulbVisual.SetActive(true);
-        if (firstMessage) firstMessage.SetActive(true);
-        if (secondMessage) secondMessage.SetActive(true);
-        if (pointLight) Invoke(nameof(EnableLight), lightOnDelay);
-    }
-
-    void OnShadeExited(SelectExitEventArgs _)
-    {
-        assembled = false;
-        if (bulbVisual) bulbVisual.SetActive(false);
-        if (pointLight) pointLight.enabled = false;
-        if (firstMessage) firstMessage.SetActive(false);
-        if (secondMessage) secondMessage.SetActive(false);
-    }
-
-    void EnableLight()
-    {
-        if (assembled && pointLight) pointLight.enabled = true;
+        yield return null; // next frame – covers any toolkit toggles during finalize
+        if (lightBulb && !lightBulb.activeSelf) lightBulb.SetActive(true);
     }
 }
