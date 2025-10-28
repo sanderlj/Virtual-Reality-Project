@@ -6,6 +6,11 @@ using UnityEngine.Events;
 
 public class ScrewDownMotion : MonoBehaviour
 {
+
+    [Header("Audio")]
+    [Tooltip("Sound to play when bulb is fully screwed in.")]
+    public AudioSource success;
+
     [Header("References")]
     public Transform screwTarget;
     public XRBaseInteractor handInteractor;
@@ -31,6 +36,7 @@ public class ScrewDownMotion : MonoBehaviour
 
     [Header("Next assembly step")]
     [Tooltip("Socket to activate when bulb is fully screwed in (e.g., the lamp shade socket).")]
+
     public XRSocketInteractor nextSocketToActivate;
 
     private XRBaseInteractable interactable;
@@ -146,6 +152,8 @@ public class ScrewDownMotion : MonoBehaviour
             IsFullyScrewed = true;
             isScrewing = false;
             Debug.Log("✅ Bulb fully screwed in!");
+            
+            if (success) success.Play();
 
             onFullyScrewed.Invoke();          // <-- NEW
 
@@ -157,6 +165,7 @@ public class ScrewDownMotion : MonoBehaviour
 
             // Optional: disable this behaviour after completion
             // enabled = false;
+            
         }
     }
 }
