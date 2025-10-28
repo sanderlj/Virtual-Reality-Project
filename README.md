@@ -12,7 +12,7 @@ The final assembled lamp can be grabbed and moved as a single object.
 - **XR Plugin Management**
 
 ## 🧪 Testing Instructions and how to run (for Lab Setup)
-1. Open the project in Unity.
+1. Open the project in Unity by adding it from disk (desktop\Operation Lamplight\Virtual-reality-project-main)
 2. Scene is located under project\Assets\OperationLamplight
 3. Make sure XR Device simulator is disabled/inactive if you play with SteamVR
 4. Press play and enjoy the game
