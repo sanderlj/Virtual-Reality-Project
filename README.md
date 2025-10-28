@@ -17,7 +17,6 @@ The final assembled lamp can be grabbed and moved as a single object.
 3. Make sure XR Device simulator is disabled/inactive if you play with SteamVR
 4. Press play and enjoy the game
 
-The main playable scene is located at:
 ## From tutorials/plugins
 - XR Interaction Toolkit (Unity official package)
 - XR Device simulator (Unity sample for testing)
